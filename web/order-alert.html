@@ -257,7 +257,10 @@ function parseDelimited(text, sep) {
     } else field += c;
   }
   if (field !== "" || row.length) { row.push(field); rows.push(row); }
-  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+  const kept = rows.filter((r) => r.some((v) => v.trim() !== ""));
+  // Grids often end each copied line with a separator: drop trailing columns that are empty everywhere.
+  const width = Math.max(0, ...kept.map((r) => r.reduce((w, v, i) => (v.trim() ? i + 1 : w), 0)));
+  return kept.map((r) => r.slice(0, width));
 }
 
 function guessSeparator(text) {

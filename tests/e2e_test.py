@@ -100,6 +100,16 @@ def form_tests(pw):
         expect(page.locator("#status")).to_be_hidden()
     check("form: the error disappears once the user starts fixing it", error_clears)
 
+    def platform_copy():
+        # Real platform layout: Tab-separated (Notepad++ shows tabs as arrows), trailing spaces,
+        # empty fields and a stray tab at the end of each line.
+        page.fill("#data", "TgtID\tTgtStatus\tBasketID\tHALTST\tPendingCancel\tClientID\tManagerName\tTgtTime\tEST_STIME\tLFTIME\t\n"
+                           "400002029\tRejected\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIC\t20261104-05:45:02.720\t\t\t\n"
+                           "700001075\tFilled\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIH\t20261104-06:23:50.190\t\t\t\n")
+        expect(page.locator("#dataMeta")).to_have_text("2 rows × 10 columns (separator: Tab)")
+        expect(page.locator("#preview th").first).to_have_text("TgtID")
+    check("form: a Tab-separated platform copy is read with the default settings", platform_copy)
+
     page.fill("#reporter", "Kenji (AP Ops)")
     page.select_option("#severity", "critical")
     page.fill("#title", "7203.T sell-short stuck ~30% behind VWAP")

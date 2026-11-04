@@ -13,16 +13,16 @@ settle_seconds = 2   # ignore files modified more recently than this
 [data]
 default_region = "AP"  # used when the pasted data has no region column
 max_orders     = 20    # cap on orders queried per ticket
-date_formats   = ["%Y.%m.%d", "%Y-%m-%d", "%Y%m%d", "%d/%m/%Y", "%d-%m-%Y"]
+date_formats   = ["%Y.%m.%d", "%Y-%m-%d", "%Y%m%d", "%Y%m%d-%H:%M:%S.%f", "%Y%m%d-%H:%M:%S", "%d/%m/%Y", "%d-%m-%Y"]   # 20261104-05:45:02.720 = platform TgtTime
 
 # Column headers recognised in the pasted data (case, spaces and punctuation are ignored).
 # Add the exact headers your trading platform uses.
 [data.columns]
-id_target = ["id_target", "target id", "targetid", "order id", "orderid"]
+id_target = ["id_target", "target id", "targetid", "tgtid", "order id", "orderid"]   # TgtID = trading platform
 id_server = ["id_server", "server id", "serverid", "server"]
 oes_oid   = ["oes_oid", "clordid", "client order id", "oes oid", "ext order id"]
 sym       = ["sym", "symbol", "ticker", "ric"]
-date      = ["date", "trade date", "tradedate"]
+date      = ["date", "trade date", "tradedate", "tgttime"]
 region    = ["region"]
 
 [kdb]

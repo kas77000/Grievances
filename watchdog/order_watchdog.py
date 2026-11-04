@@ -40,14 +40,14 @@ NOT_READY_GRACE_S = 60  # an unparsable ticket younger than this is assumed to b
 SAFE_TOKEN = re.compile(r"^[A-Za-z0-9_.:/#\-]{1,64}$")  # what we allow inside a q symbol literal
 
 DEFAULT_COLUMNS = {
-    "id_target": ["id_target", "target id", "targetid", "order id", "orderid"],
+    "id_target": ["id_target", "target id", "targetid", "tgtid", "order id", "orderid"],
     "id_server": ["id_server", "server id", "serverid", "server"],
     "oes_oid": ["oes_oid", "clordid", "client order id", "oes oid", "ext order id"],
     "sym": ["sym", "symbol", "ticker", "ric"],
-    "date": ["date", "trade date", "tradedate"],
+    "date": ["date", "trade date", "tradedate", "tgttime"],
     "region": ["region"],
 }
-DEFAULT_DATE_FORMATS = ["%Y.%m.%d", "%Y-%m-%d", "%Y%m%d", "%d/%m/%Y", "%d-%m-%Y"]
+DEFAULT_DATE_FORMATS = ["%Y.%m.%d", "%Y-%m-%d", "%Y%m%d", "%Y%m%d-%H:%M:%S.%f", "%Y%m%d-%H:%M:%S", "%d/%m/%Y", "%d-%m-%Y"]
 
 
 # ----------------------------- config -----------------------------
@@ -127,7 +127,9 @@ def parse_rows(raw: str, sep: str, has_header: bool) -> tuple[list[str], list[di
     rows = [r for r in rows if any(c.strip() for c in r)]
     if not rows:
         return [], []
-    width = max(len(r) for r in rows)
+    # Grids often end each copied line with a separator: drop trailing columns that are empty everywhere.
+    width = max(i + 1 for r in rows for i, c in enumerate(r) if c.strip())
+    rows = [r[:width] for r in rows]
     if has_header:
         header, body = [h.strip() for h in rows[0]], rows[1:]
     else:

@@ -154,13 +154,20 @@ the screenshots in `docs/screenshots/`. The notifier is checked in dry-run mode 
 show, to whom, and when). Real kdb+ and SMTP are not exercised: kdb+ is covered with a fake
 connection and demo data.
 
+## Trading platform copy format
+
+Confirmed from a real copy: **Tab-separated** (Notepad++ with "Show all characters" draws tabs
+as `→` and spaces as `·`), header row first, `id_target` in **`TgtID`**, the order time in
+**`TgtTime`** as `20261104-05:45:02.720`. Lines end with a stray tab and some fields are empty or
+have trailing spaces; both parsers handle that (trailing empty columns are dropped). Columns:
+`TgtID TgtStatus BasketID HALTST PendingCancel ClientID ManagerName TgtTime EST_STIME LFTIME`.
+
+If another system's header differs, add it to `[data.columns]` in `config.toml` (matching
+ignores case, spaces and punctuation); any ticket whose ids aren't found lists the columns it
+saw, so the first one tells you what to add.
+
 ## Things to fill in once known
 
-- **Trading platform column names.** The pasted data will contain `id_target` under another
-  header. Add that header to `[data.columns] id_target` in `config.toml`. Matching ignores
-  case, spaces and punctuation. Until then, the report of any ticket lists the column names it
-  saw, so the first real ticket tells you what to add.
-- **Separator** of the platform copy: `CONFIG.DEFAULT_SEPARATOR` in the HTML.
 - kdb+ endpoints per region (`.cfg.hsources[(region;"OMSR")]` / `"OMSH"`), and set `kdb.enabled = true`.
 - SMTP relay and team address.
 

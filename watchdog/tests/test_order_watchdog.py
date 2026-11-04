@@ -103,6 +103,23 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(orders[1].date, dt.date(2026, 11, 5))
         self.assertTrue(any("Row 2" in x for x in warnings))
 
+    def test_trading_platform_copy(self):
+        """Layout of a real platform copy: tabs, trailing spaces, empty fields, a stray tab per line."""
+        raw = ("TgtID\tTgtStatus\tBasketID\tHALTST\tPendingCancel\tClientID\tManagerName\tTgtTime\tEST_STIME\tLFTIME\t\r\n"
+               "400002029\tRejected\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIC\t20261104-05:45:02.720\t\t\t\r\n"
+               "700001063\tRejected\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIH\t20261104-06:19:41.729\t\t\t\r\n"
+               "400002453\tCancel\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIC\t20261104-06:19:54.535\t\t\t\r\n"
+               "700001075\tFilled\tSILK-ALPHAGRP.SYN.SG.A \t\tN\tALPHAGRP.SYN.SG.A\tAPIH\t20261104-06:23:50.190\t\t\t\r\n")
+        header, rows = w.parse_rows(raw, "\t", True)
+        self.assertEqual(len(header), 10)  # trailing tab doesn't add an empty column
+        self.assertEqual(header[0], "TgtID")
+        self.assertEqual(rows[0]["HALTST"], "")
+        cfg = w.Config(inbox=Path("."), processed=Path("."), failed=Path("."))
+        orders, warnings = w.extract_orders(header, rows, cfg, dt.date(2026, 11, 5))
+        self.assertEqual([o.id_target for o in orders], [400002029, 700001063, 400002453, 700001075])
+        self.assertTrue(all(o.date == dt.date(2026, 11, 4) for o in orders))  # from TgtTime, not the report date
+        self.assertEqual(warnings, [])
+
     def test_render_q_skips_when_value_missing(self):
         ref = w.OrderRef(dt.date(2026, 1, 2), "AP", id_target=5)
         self.assertEqual(w.render_q("select from t where date={{date}}, id_target={{id_target}}", ref),
