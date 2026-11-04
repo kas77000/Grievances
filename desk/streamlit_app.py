@@ -62,6 +62,13 @@ with st.sidebar:
         st.caption("No config.toml found: showing the bundled demo issues.")
 
     T.vspace(.6)
+    st.toggle("Sound for new issues", value=True, key="alert_sound")
+
+    @st.fragment(run_every="30s")  # sidebar runs on every page, so alerts follow you around the app
+    def _watch():
+        C.watch_for_new_issues()
+    _watch()
+
     cur = st.session_state.get("theme", "dark")
     if st.button(f"Switch to {'light' if cur == 'dark' else 'dark'} mode", width="stretch"):
         T.toggle_theme()

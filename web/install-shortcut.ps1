@@ -26,6 +26,8 @@ $lnk = $shell.CreateShortcut($lnkPath)
 $lnk.TargetPath = $edge
 $lnk.Arguments = "--app=`"$url`""
 $lnk.Description = "Report an order execution problem to Quant & Support"
-$lnk.IconLocation = $(if ($IconPath) { $IconPath } else { "$env:SystemRoot\System32\shell32.dll,77" })
+# Same logo as the notifier, so the form, the notifications and the Desk read as one tool.
+$defaultIcon = Join-Path $PSScriptRoot "..\notifier\assets\order-alert.ico"
+$lnk.IconLocation = $(if ($IconPath) { $IconPath } elseif (Test-Path $defaultIcon) { (Resolve-Path $defaultIcon).Path } else { "$env:SystemRoot\System32\shell32.dll,77" })
 $lnk.Save()
 Write-Host "Created $lnkPath -> $url"

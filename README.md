@@ -1,9 +1,9 @@
 # Order Alert
 
 Lets traders/ops tell the Quant & Support team about an order that is misbehaving, without the
-trading platform having to support it. Three parts, joined by a shared-drive folder:
-the **form** users fill in, the **watchdog** that files and enriches each report, and the
-**Desk** where the team triages and analyses issues. A short walkthrough deck is in
+trading platform having to support it. Four parts, joined by a shared-drive folder:
+the **form** users fill in, the **watchdog** that files and enriches each report, the
+**Desk** where the team triages and analyses issues, and a **desktop notifier** on each team PC. A short walkthrough deck is in
 [`docs/Order-Alert.pptx`](docs/Order-Alert.pptx).
 
 ```
@@ -110,17 +110,49 @@ Handling state is an append-only `events.jsonl` in each issue folder: one line p
 (who, when, what). Several people can work at once without overwriting each other, and it is
 the audit trail. Everyone picks their name in the sidebar; it is kept in the URL (`?me=`).
 
+While the Desk is open (any page), a new issue pops an in-app notification and a chime (sidebar
+toggle), and the tab title carries the unassigned count, e.g. `(3) Order Alert Desk`.
+
+## 4. Desktop notifications (`notifier/`)
+
+Windows notifications on each team member's PC, read straight from the share: no email, no
+install (Windows PowerShell 5.1). Each member runs once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File \\fileserver\share\OrderAlerts\notifier\install-notifier.ps1 `
+    -ProcessedPath '\\fileserver\share\OrderAlerts\processed' -DeskUrl 'http://order-desk-host:8501'
+```
+
+This adds a hidden logon task for that user (no admin) and shows a sample notification.
+Options: `-MinSeverity high` (only high/critical), `-RemindUnassignedMinutes 0` (no reminders),
+`-Uninstall`.
+
+- Notifications come from their own app, **Order Alert**, with its logo and a severity badge
+  (registered per user under `HKCU\Software\Classes\AppUserModelId`), so they can be muted or
+  tuned in Windows Settings > Notifications like any app.
+- Clicking opens the issue in the Desk; high/critical stay on screen until dismissed.
+- A reminder fires once if a high/critical issue is still unassigned after 10 minutes; it reads
+  the same `events.jsonl` as the Desk, so it stops as soon as someone clicks *Take it*.
+- On first start only issues from the last hour are announced (no flood); state and a log are
+  in `%LOCALAPPDATA%\OrderAlert`.
+- Icons: `notifier/assets/`, regenerated with `python notifier/make_icons.py`. The form's
+  desktop shortcut uses the same logo.
+
+Windows "Do not disturb" (e.g. during full-screen apps) holds notifications back; they then
+wait in the Action Center (Win+N).
+
 ## Tests
 
 ```bash
 python -m unittest discover -s watchdog/tests     # watchdog: parsing, kdb+ (fake), quarantine…
 cd desk && python -m unittest tests.test_desk     # issue store, order resolution, every page (AppTest)
-python tests/e2e_test.py                          # real browser, form → watchdog → Desk → analysis
+python tests/e2e_test.py                          # real browser: form → watchdog → notifier → Desk
 ```
 
 The end-to-end test needs `pip install playwright && playwright install chromium`. It writes
-the screenshots in `docs/screenshots/`. Real kdb+ and SMTP are not exercised: kdb+ is covered
-with a fake connection and demo data.
+the screenshots in `docs/screenshots/`. The notifier is checked in dry-run mode (what it would
+show, to whom, and when). Real kdb+ and SMTP are not exercised: kdb+ is covered with a fake
+connection and demo data.
 
 ## Things to fill in once known
 

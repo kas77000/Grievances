@@ -187,7 +187,37 @@ def watchdog_tests():
     check("watchdog: picks up both tickets, extracts id_target, unpacks attachments, writes report", run)
 
 
-# ---------------------------------------------------------------- 3. the desk
+# ---------------------------------------------------------------- 3. the desktop notifier
+def notifier(*args) -> list[dict]:
+    r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        str(ROOT / "notifier" / "order-alert-notifier.ps1"), "-ProcessedPath", str(E2E / "processed"),
+                        "-DeskUrl", DESK_URL, "-StateDir", str(E2E / "notifier-state"), "-Once", "-DryRun", *args],
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    return [json.loads(x) for x in r.stdout.splitlines() if x.strip().startswith("{")]
+
+
+def notifier_tests():
+    def new_issues():
+        out = notifier("-MinSeverity", "high", "-RemindUnassignedMinutes", "0")
+        titles = {n["title"] for n in out if n["kind"] == "new"}
+        assert "7203.T sell-short stuck ~30% behind VWAP" in titles, out
+        assert "Fallback check: order id typed by hand" not in titles, "medium issue shown despite -MinSeverity high"
+        e2e = next(n for n in out if n["title"].startswith("7203.T"))
+        assert e2e["url"] == f"{DESK_URL}/issue?id={E2E_ISSUE}", e2e
+        assert notifier("-MinSeverity", "high", "-RemindUnassignedMinutes", "0") == [], "notified twice"
+    check("notifier: one notification per new issue, filtered by severity, linking to the Desk", new_issues)
+
+    def reminders():
+        out = notifier("-RemindUnassignedMinutes", "5")
+        reminded = {n["title"] for n in out if n["kind"] == "reminder"}
+        assert "Toyota VWAP sell-short way behind schedule" in reminded, out      # critical, nobody on it
+        assert "Tencent buy not filling near the limit" not in reminded, out       # Bob took it in the Desk
+        assert notifier("-RemindUnassignedMinutes", "5") == [], "reminded twice"
+    check("notifier: reminds once about urgent unassigned issues, not ones someone has taken", reminders)
+
+
+# ---------------------------------------------------------------- 4. the desk
 def wait_http(url, timeout=60):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -214,8 +244,9 @@ def desk_tests(pw):
             expect(page.get_by_text("High / critical open")).to_be_visible(timeout=30000)
             expect(page.locator(".amx-tile").first).to_contain_text("5")  # 3 demo + 2 new open issues
             expect(page.locator("[data-testid='stDataFrame']")).to_be_visible()
+            page.wait_for_function("document.title === '(4) Order Alert Desk'", timeout=15000)
             page.wait_for_timeout(1500)
-        check("desk: board lists the new issues with open/unassigned counts", board)
+        check("desk: board lists the new issues; tab title shows the unassigned count", board)
         shot(page, "03_board")
 
         def open_from_board():
@@ -278,6 +309,22 @@ def desk_tests(pw):
             expect(page.locator(".amx-tile").nth(3)).to_contain_text("1", timeout=20000)  # Mine: Chen has it now
             expect(page.locator(".amx-tile").nth(1)).to_contain_text("3")  # 4 unassigned before Chen took one
         check("desk: board reflects the change (Mine = 1 for Chen, one fewer unassigned)", multi_order_and_back)
+
+        def live_alert():
+            page.get_by_text("Order data source").first.click()  # any click lets the browser play the chime
+            t = {"schema": 1, "id": "20991231-235959-live01", "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                 "reporter": "Mei (HK desk)", "severity": "critical", "title": "HK order rejected by the exchange",
+                 "description": "", "data": {"raw": "Target ID\n100742\n", "separator": "\t", "has_header": True},
+                 "attachments": []}
+            (E2E / "inbox" / "20991231-235959-live01.ticket.json").write_text(json.dumps(t), encoding="utf-8")
+            time.sleep(2.5)
+            subprocess.run([sys.executable, str(ROOT / "watchdog" / "order_watchdog.py"), "-c", str(E2E / "config.toml"),
+                            "--once"], check=True, capture_output=True, timeout=60)
+            expect(page.get_by_text("HK order rejected by the exchange").first).to_be_visible(timeout=45000)
+            page.wait_for_function("(window.__orderAlertBeeps || 0) >= 1", timeout=10000)
+            page.wait_for_function("document.title === '(4) Order Alert Desk'", timeout=10000)
+            shot(page, "07_desk_alert")
+        check("desk: an issue arriving while the Desk is open pops a toast, chimes and updates the tab title", live_alert)
         browser.close()
     finally:
         server.terminate()
@@ -293,7 +340,9 @@ if __name__ == "__main__":
         form_tests(pw)
         print("2. Watchdog")
         watchdog_tests()
-        print("3. Desk")
+        print("3. Notifier")
+        notifier_tests()
+        print("4. Desk")
         desk_tests(pw)
     failed = [r for r in results if not r[1]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed")

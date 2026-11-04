@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -49,6 +51,48 @@ def get_issue(issue_id: Optional[str]) -> Optional[I.Issue]:
 def record(issue: I.Issue, kind: str, value: str = "", text: str = "") -> None:
     I.append_event(issue.folder, me(), kind, value, text)
     _issues.clear()
+
+
+# ---- new-issue alerts -----------------------------------------------------
+_ALERT_JS = """<script>/* %(nonce)s */
+document.title = %(title)s;
+if (%(new)d > 0) {
+  window.__orderAlertBeeps = (window.__orderAlertBeeps || 0) + %(new)d;
+  if (%(sound)s) {
+    try {  // two-tone chime; browsers allow it once the user has clicked anything on the page
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [[660, 0], [880, 0.18]].forEach(([f, t]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), t0 = ctx.currentTime + t;
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+        o.connect(g).connect(ctx.destination);
+        o.start(t0); o.stop(t0 + 0.17);
+      });
+    } catch (e) {}
+  }
+}
+</script>"""
+
+
+def watch_for_new_issues():
+    """Toast + chime for issues that arrived since this browser last looked, and keep the
+    unassigned count in the tab title so it shows even when the tab is in the background."""
+    current = issues()
+    ss = st.session_state
+    known = ss.get("known_issue_ids")
+    new = [] if known is None else [i for i in current if i.id not in known]  # first load: no alert flood
+    ss["known_issue_ids"] = {i.id for i in current}
+    for i in new[:3]:
+        st.toast(f"**New {i.severity} issue** · {i.title} — {i.reporter}", icon=":material/notification_important:")
+    unassigned = sum(1 for i in current if i.is_open and not i.assignee)
+    st.html(_ALERT_JS % {
+        "nonce": time.time_ns(),  # identical HTML would not re-run
+        "title": json.dumps(f"({unassigned}) Order Alert Desk" if unassigned else "Order Alert Desk"),
+        "new": len(new),
+        "sound": "true" if ss.get("alert_sound", True) else "false",
+    }, unsafe_allow_javascript=True)
 
 
 # ---- session --------------------------------------------------------------
