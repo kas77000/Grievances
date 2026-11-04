@@ -77,13 +77,23 @@ def pykx_available() -> bool:
         return False
 
 
+def _auth_kwargs(conn: Connection) -> dict:
+    """host/port plus credentials; the password is read from the env var named in the config."""
+    import os
+    kwargs = {"host": conn.host, "port": int(conn.port)}
+    if conn.username:
+        kwargs["username"] = conn.username
+        kwargs["password"] = os.environ.get(conn.password_env, "") if conn.password_env else ""
+    return kwargs
+
+
 def test_connection(conn: Connection, timeout_s: float = 3.0) -> tuple[bool, str]:
     """Open a short-lived pykx connection and run a trivial query."""
     if not pykx_available():
         return False, "pykx not installed (running in mock-data mode)."
     try:
         import pykx as kx
-        with kx.QConnection(host=conn.host, port=int(conn.port), timeout=timeout_s) as q:
+        with kx.QConnection(timeout=timeout_s, **_auth_kwargs(conn)) as q:
             val = q("1+1").py()
         ok = (val == 2)
         return ok, "Connected." if ok else "Connected but sanity query failed."
@@ -100,13 +110,8 @@ class KdbClient:
 
     def _handle(self):
         if self._q is None:
-            import os
             import pykx as kx
-            kwargs = {"host": self.conn.host, "port": int(self.conn.port)}
-            if self.conn.username:
-                kwargs["username"] = self.conn.username
-                kwargs["password"] = os.environ.get(self.conn.password_env, "") if self.conn.password_env else ""
-            self._q = kx.QConnection(**kwargs)
+            self._q = kx.QConnection(**_auth_kwargs(self.conn))
         return self._q
 
     def query(self, expr: str, **kwargs):

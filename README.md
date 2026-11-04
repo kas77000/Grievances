@@ -6,6 +6,9 @@ the **form** users fill in, the **watchdog** that files and enriches each report
 **Desk** where the team triages and analyses issues, and a **desktop notifier** on each team PC. A short walkthrough deck is in
 [`docs/Order-Alert.pptx`](docs/Order-Alert.pptx).
 
+**Deploying it?** Follow the setup and operations guide: [`docs/SETUP.md`](docs/SETUP.md)
+(permissions, services, configuration reference, go-live check, troubleshooting).
+
 ```
  user PC                        shared drive                          watchdog server
  ─────────                      ────────────                          ───────────────

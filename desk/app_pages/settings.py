@@ -36,7 +36,7 @@ if cfg.connections:
     pick = st.selectbox("Test a connection", [c.name for c in cfg.connections])
     if st.button("Test", disabled=not pykx_available()):
         c = next(c for c in cfg.connections if c.name == pick)
-        ok, msg = test_connection(Connection(c.name, c.host, c.port, c.region, c.kind))
+        ok, msg = test_connection(Connection(c.name, c.host, c.port, c.region, c.kind, c.username, c.password_env))
         (st.success if ok else st.error)(f"{c.name}: {msg}")
 else:
     st.caption("No connections in config.toml.")
