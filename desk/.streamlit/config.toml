@@ -1,0 +1,18 @@
+# Base theme. Runtime light/dark switching is handled by theme/styles.py (CSS injection);
+# these values are a sensible default before the first render.
+[theme]
+base = "dark"
+primaryColor = "#6a86fb"
+backgroundColor = "#0d1016"
+secondaryBackgroundColor = "#1b212c"
+textColor = "#e7ebf1"
+font = "sans serif"
+
+[server]
+headless = true
+
+[client]
+toolbarMode = "viewer"  # hide Deploy / developer menu for the team
+
+[browser]
+gatherUsageStats = false

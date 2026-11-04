@@ -1,0 +1,6 @@
+streamlit>=1.50
+pandas>=2.0
+numpy>=1.24
+plotly>=5.20
+# Only needed to query real kdb+ servers; without it the Desk analyses demo data.
+# pykx>=2.5

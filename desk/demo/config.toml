@@ -1,0 +1,15 @@
+# Demo config used when no watchdog/config.toml exists. Run `python demo/seed_demo.py` to fill it.
+[paths]
+inbox     = "data/inbox"
+processed = "data/processed"
+failed    = "data/failed"
+
+[data]
+default_region = "AP"
+
+[kdb]
+enabled = false
+
+[desk]
+team = ["Alice", "Bob", "Chen"]
+history_days = 30

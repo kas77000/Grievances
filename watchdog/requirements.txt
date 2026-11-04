@@ -1,0 +1,4 @@
+# The watchdog itself only needs the standard library (Python 3.11+).
+# For kdb+ lookups:
+pandas
+pykx

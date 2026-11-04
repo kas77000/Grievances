@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Alert</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #d9dce1;
+    --text: #1d2330;
+    --muted: #5f6878;
+    --accent: #1f5fd1;
+    --accent-text: #ffffff;
+    --ok-bg: #e6f4ea;
+    --ok-text: #18632f;
+    --warn-bg: #fff4e0;
+    --warn-text: #8a4b00;
+    --err-bg: #fde8e8;
+    --err-text: #a11d1d;
+    --code-bg: #f0f2f5;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15181e;
+      --surface: #1e222a;
+      --border: #343a46;
+      --text: #e6e9ef;
+      --muted: #9aa3b2;
+      --accent: #5b8ff0;
+      --accent-text: #0b1020;
+      --ok-bg: #173323;
+      --ok-text: #8fe0a8;
+      --warn-bg: #3a2a10;
+      --warn-text: #f5c27a;
+      --err-bg: #3d1a1a;
+      --err-text: #f4a4a4;
+      --code-bg: #262b35;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  .field { margin-bottom: 16px; }
+  label, .label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .hint { color: var(--muted); font-weight: 400; font-size: 12px; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text); font: inherit;
+  }
+  textarea { resize: vertical; }
+  textarea.mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; white-space: pre; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  details { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details[open] summary { margin-bottom: 8px; }
+  .inline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .inline select { width: auto; }
+  .inline input[type=text] { width: 60px; text-align: center; }
+  .preview { margin-top: 8px; max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+  .preview:empty { display: none; }
+  .preview table { border-collapse: collapse; font-size: 12px; width: max-content; min-width: 100%; }
+  .preview th, .preview td { border-bottom: 1px solid var(--border); padding: 4px 8px; text-align: left; white-space: nowrap; }
+  .preview th { background: var(--code-bg); position: sticky; top: 0; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 4px; min-height: 18px; }
+  .meta button { font-size: 12px; }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 6px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer;
+  }
+  .drop.over { border-color: var(--accent); color: var(--accent); }
+  .files { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .files li { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; max-width: 100%; }
+  .files img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+  .files span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  button {
+    font: inherit; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 6px 12px; cursor: pointer;
+  }
+  button.link { border: none; background: none; color: var(--accent); padding: 0; text-decoration: underline; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; padding: 10px 20px; }
+  button:disabled { opacity: .6; cursor: default; }
+  .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 16px; }
+  .status { padding: 10px 12px; border-radius: 6px; margin-bottom: 16px; }
+  .status:empty { display: none; }
+  .status.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .status.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .status.err { background: var(--err-bg); color: var(--err-text); }
+  .inbox { font-size: 12px; color: var(--muted); }
+  code { background: var(--code-bg); padding: 1px 4px; border-radius: 4px; }
+  .req { color: var(--err-text); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Order Alert</h1>
+      <p>Report an order execution problem to the Quant &amp; Support team.</p>
+    </div>
+  </header>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <form id="form" novalidate>
+    <div class="row">
+      <div class="field">
+        <label for="reporter">Your name <span class="req">*</span></label>
+        <input type="text" id="reporter" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="severity">Severity</label>
+        <select id="severity">
+          <option value="low">Low – informational</option>
+          <option value="medium" selected>Medium – needs a look today</option>
+          <option value="high">High – order impacted now</option>
+          <option value="critical">Critical – client / market impact</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="title">Title <span class="req">*</span></label>
+      <input type="text" id="title" maxlength="200" placeholder="e.g. VWAP order on XYZ stuck at 40% filled" required>
+    </div>
+
+    <div class="field">
+      <label for="description">What is the problem?</label>
+      <textarea id="description" rows="4" placeholder="What did you expect, what happened, since when…"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="data">Order data <span class="hint">— paste the rows copied from the trading platform</span></label>
+      <textarea id="data" class="mono" rows="6" spellcheck="false" placeholder="Paste here (Ctrl+V)"></textarea>
+      <div id="dataMeta" class="meta"></div>
+      <div id="preview" class="preview"></div>
+      <details id="advanced">
+        <summary>Advanced: data format</summary>
+        <div class="inline">
+          <label for="sep" style="margin:0">Separator</label>
+          <select id="sep">
+            <option value="&#9;">Tab</option>
+            <option value=",">Comma ,</option>
+            <option value=";">Semicolon ;</option>
+            <option value="|">Pipe |</option>
+            <option value="custom">Other…</option>
+          </select>
+          <input type="text" id="sepCustom" maxlength="1" aria-label="Custom separator" hidden>
+          <label style="margin:0;font-weight:400"><input type="checkbox" id="hasHeader" checked> First row is a header</label>
+        </div>
+      </details>
+    </div>
+
+    <div class="field">
+      <span class="label">Attachments <span class="hint">— screenshots, files. You can also paste a screenshot anywhere on this page.</span></span>
+      <div id="drop" class="drop" tabindex="0" role="button">Drop files here or click to choose</div>
+      <input type="file" id="fileInput" multiple hidden>
+      <ul id="files" class="files"></ul>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="primary" id="submit">Send alert</button>
+      <span class="inbox">Inbox folder: <strong id="inboxName">not set</strong> · <button type="button" class="link" id="changeInbox">change</button></span>
+    </div>
+  </form>
+</main>
+
+<script>
+"use strict";
+
+// ---- Settings (edit these when deploying) ---------------------------------
+const CONFIG = {
+  DEFAULT_SEPARATOR: "\t",            // separator used by the trading platform copy
+  MAX_TOTAL_ATTACHMENT_MB: 15,
+  TICKET_SUFFIX: ".ticket.json",      // the watchdog only picks up files with this suffix
+  SCHEMA_VERSION: 1,
+  APP_VERSION: "1.0.0",
+};
+// ---------------------------------------------------------------------------
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  form: $("form"), status: $("status"), reporter: $("reporter"), severity: $("severity"),
+  title: $("title"), description: $("description"), data: $("data"), dataMeta: $("dataMeta"),
+  preview: $("preview"), advanced: $("advanced"), sep: $("sep"), sepCustom: $("sepCustom"),
+  hasHeader: $("hasHeader"), drop: $("drop"), fileInput: $("fileInput"), files: $("files"),
+  submit: $("submit"), inboxName: $("inboxName"), changeInbox: $("changeInbox"),
+};
+let attachments = [];   // {file: File, url: string|null}
+let inboxHandle = null;
+
+// ---- Small storage helpers (all failures are non-fatal) -------------------
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
+
+function idb(mode, fn) {
+  return new Promise((resolve) => {
+    let req;
+    try { req = indexedDB.open("order-alert", 1); } catch { return resolve(null); }
+    req.onupgradeneeded = () => req.result.createObjectStore("kv");
+    req.onerror = () => resolve(null);
+    req.onsuccess = () => {
+      try {
+        const tx = req.result.transaction("kv", mode);
+        const r = fn(tx.objectStore("kv"));
+        tx.oncomplete = () => resolve(r && "result" in r ? r.result : null);
+        tx.onerror = () => resolve(null);
+      } catch { resolve(null); }
+    };
+  });
+}
+const idbGet = (k) => idb("readonly", (s) => s.get(k));
+const idbSet = (k, v) => idb("readwrite", (s) => s.put(v, k));
+
+// ---- Status banner ---------------------------------------------------------
+function showStatus(kind, html) {
+  els.status.className = "status " + kind;
+  els.status.innerHTML = html;
+  els.status.scrollIntoView({ block: "nearest" });
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---- Delimited text parsing (same rules as Python's csv module) -----------
+function currentSeparator() {
+  if (els.sep.value === "custom") return els.sepCustom.value || CONFIG.DEFAULT_SEPARATOR;
+  return els.sep.value;
+}
+
+function parseDelimited(text, sep) {
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+      } else field += c;
+    } else if (c === '"' && field === "") {
+      quoted = true;
+    } else if (c === sep) {
+      row.push(field); field = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += c;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+}
+
+function guessSeparator(text) {
+  const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+  let best = null, bestCount = 0;
+  for (const s of ["\t", ";", ",", "|"]) {
+    const n = firstLine.split(s).length - 1;
+    if (n > bestCount) { best = s; bestCount = n; }
+  }
+  return best;
+}
+const sepLabel = (s) => ({ "\t": "Tab", ",": "comma", ";": "semicolon", "|": "pipe" }[s] || `"${s}"`);
+
+function renderPreview() {
+  const text = els.data.value;
+  els.preview.innerHTML = "";
+  els.dataMeta.innerHTML = "";
+  if (!text.trim()) return;
+
+  const sep = currentSeparator();
+  const rows = parseDelimited(text, sep);
+  const header = els.hasHeader.checked;
+  const width = Math.max(...rows.map((r) => r.length));
+  const dataRows = header ? rows.length - 1 : rows.length;
+
+  let meta = `${dataRows} row${dataRows === 1 ? "" : "s"} × ${width} column${width === 1 ? "" : "s"} (separator: ${sepLabel(sep)})`;
+  if (width === 1) {
+    const guess = guessSeparator(text);
+    if (guess && guess !== sep) {
+      meta += ` — only one column found. <button type="button" class="link" id="useGuess">Use ${sepLabel(guess)} instead</button>`;
+    }
+  }
+  els.dataMeta.innerHTML = meta;
+  const useGuess = $("useGuess");
+  if (useGuess) useGuess.onclick = () => { setSeparator(guessSeparator(text)); els.advanced.open = true; renderPreview(); };
+
+  const shown = rows.slice(0, header ? 21 : 20);
+  let html = "<table>";
+  shown.forEach((r, i) => {
+    const tag = header && i === 0 ? "th" : "td";
+    html += "<tr>" + Array.from({ length: width }, (_, j) => `<${tag}>${esc(r[j] ?? "")}</${tag}>`).join("") + "</tr>";
+  });
+  html += "</table>";
+  if (rows.length > shown.length) html += `<div class="meta" style="padding:4px 8px">… ${rows.length - shown.length} more rows not shown</div>`;
+  els.preview.innerHTML = html;
+}
+
+function setSeparator(s) {
+  const opt = [...els.sep.options].find((o) => o.value === s);
+  if (opt) { els.sep.value = s; els.sepCustom.hidden = true; }
+  else { els.sep.value = "custom"; els.sepCustom.hidden = false; els.sepCustom.value = s; }
+}
+
+// ---- Attachments -----------------------------------------------------------
+function addFiles(fileList) {
+  for (const f of fileList) {
+    attachments.push({ file: f, url: f.type.startsWith("image/") ? URL.createObjectURL(f) : null });
+  }
+  renderFiles();
+}
+
+function renderFiles() {
+  els.files.innerHTML = "";
+  attachments.forEach((a, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = (a.url ? `<img src="${a.url}" alt="">` : "") +
+      `<span title="${esc(a.file.name)}">${esc(a.file.name)}</span>` +
+      `<span class="hint">${(a.file.size / 1024).toFixed(0)} KB</span>`;
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.textContent = "✕"; rm.setAttribute("aria-label", "Remove " + a.file.name);
+    rm.onclick = () => { if (a.url) URL.revokeObjectURL(a.url); attachments.splice(i, 1); renderFiles(); };
+    li.appendChild(rm);
+    els.files.appendChild(li);
+  });
+}
+
+function stamp(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",", 2)[1] || "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+// ---- Inbox folder (File System Access API) --------------------------------
+const fsSupported = typeof window.showDirectoryPicker === "function";
+
+async function loadInbox() {
+  if (!fsSupported) {
+    els.inboxName.textContent = "not supported by this browser (tickets will be downloaded)";
+    els.changeInbox.hidden = true;
+    return;
+  }
+  inboxHandle = await idbGet("inbox");
+  els.inboxName.textContent = inboxHandle ? inboxHandle.name : "not set (you will be asked on first send)";
+}
+
+async function pickInbox() {
+  inboxHandle = await window.showDirectoryPicker({ id: "order-alert-inbox", mode: "readwrite" });
+  await idbSet("inbox", inboxHandle);
+  els.inboxName.textContent = inboxHandle.name;
+  return inboxHandle;
+}
+
+// Must be called straight from a click: permission prompts need a user gesture.
+async function getWritableInbox() {
+  if (!fsSupported) return null;
+  if (inboxHandle) {
+    const opts = { mode: "readwrite" };
+    if ((await inboxHandle.queryPermission(opts)) === "granted") return inboxHandle;
+    if ((await inboxHandle.requestPermission(opts)) === "granted") return inboxHandle;
+  }
+  return pickInbox();
+}
+
+async function writeTicket(dir, name, blob) {
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();   // Chromium writes to a swap file and renames on close
+  await w.write(blob);
+  await w.close();
+}
+
+function downloadTicket(name, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ---- Submit ----------------------------------------------------------------
+async function onSubmit(ev) {
+  ev.preventDefault();
+  const reporter = els.reporter.value.trim();
+  const title = els.title.value.trim();
+  if (!reporter || !title) {
+    showStatus("err", "Please fill in your name and a title.");
+    (reporter ? els.title : els.reporter).focus();
+    return;
+  }
+  if (!els.description.value.trim() && !els.data.value.trim() && !attachments.length) {
+    showStatus("err", "Please add a description, some order data, or an attachment so we can investigate.");
+    els.description.focus();
+    return;
+  }
+  const totalMB = attachments.reduce((s, a) => s + a.file.size, 0) / 1048576;
+  if (totalMB > CONFIG.MAX_TOTAL_ATTACHMENT_MB) {
+    showStatus("err", `Attachments are ${totalMB.toFixed(1)} MB; the limit is ${CONFIG.MAX_TOTAL_ATTACHMENT_MB} MB.`);
+    return;
+  }
+
+  els.submit.disabled = true;
+  try {
+    let dir = null;
+    try {
+      dir = await getWritableInbox();
+    } catch (e) {
+      if (e.name === "AbortError") { showStatus("warn", "No inbox folder chosen — the alert was not sent."); return; }
+      console.warn("Inbox unavailable, falling back to download", e);
+    }
+
+    const now = new Date();
+    const id = `${stamp(now)}-${Math.random().toString(36).slice(2, 8)}`;
+    const ticket = {
+      schema: CONFIG.SCHEMA_VERSION,
+      id,
+      created_at: now.toISOString(),
+      created_local: now.toString(),
+      reporter,
+      severity: els.severity.value,
+      title,
+      description: els.description.value,
+      data: {
+        raw: els.data.value,
+        separator: currentSeparator(),
+        has_header: els.hasHeader.checked,
+      },
+      attachments: await Promise.all(attachments.map(async (a) => ({
+        name: a.file.name, type: a.file.type || "application/octet-stream", size: a.file.size,
+        data_base64: await fileToBase64(a.file),
+      }))),
+      client: { app_version: CONFIG.APP_VERSION, user_agent: navigator.userAgent },
+    };
+    const name = id + CONFIG.TICKET_SUFFIX;
+    const blob = new Blob([JSON.stringify(ticket)], { type: "application/json" });
+
+    if (dir) {
+      await writeTicket(dir, name, blob);
+      showStatus("ok", `Alert sent. Reference: <code>${esc(id)}</code>`);
+    } else {
+      downloadTicket(name, blob);
+      showStatus("warn", `This browser cannot write to the shared folder, so the alert was downloaded as <code>${esc(name)}</code>. ` +
+        `Move that file into the shared inbox folder to send it.`);
+    }
+    resetForm();
+  } catch (e) {
+    console.error(e);
+    showStatus("err", `The alert could not be sent: ${esc(e.message || e)}. Check you can reach the shared drive and try again.`);
+  } finally {
+    els.submit.disabled = false;
+  }
+}
+
+function resetForm() {
+  els.title.value = "";
+  els.description.value = "";
+  els.data.value = "";
+  els.severity.value = "medium";
+  attachments.forEach((a) => a.url && URL.revokeObjectURL(a.url));
+  attachments = [];
+  renderFiles();
+  renderPreview();
+}
+
+// ---- Wiring ----------------------------------------------------------------
+setSeparator(CONFIG.DEFAULT_SEPARATOR);
+els.reporter.value = lsGet("reporter") || "";
+els.reporter.addEventListener("change", () => lsSet("reporter", els.reporter.value.trim()));
+els.data.addEventListener("input", renderPreview);
+els.hasHeader.addEventListener("change", renderPreview);
+els.sep.addEventListener("change", () => {
+  els.sepCustom.hidden = els.sep.value !== "custom";
+  if (!els.sepCustom.hidden) els.sepCustom.focus();
+  renderPreview();
+});
+els.sepCustom.addEventListener("input", renderPreview);
+
+els.drop.addEventListener("click", () => els.fileInput.click());
+els.drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.fileInput.click(); } });
+els.fileInput.addEventListener("change", () => { addFiles(els.fileInput.files); els.fileInput.value = ""; });
+els.drop.addEventListener("dragover", (e) => { e.preventDefault(); els.drop.classList.add("over"); });
+els.drop.addEventListener("dragleave", () => els.drop.classList.remove("over"));
+els.drop.addEventListener("drop", (e) => { e.preventDefault(); els.drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+// Stop files dropped outside the zone from navigating the browser away from the form.
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => e.preventDefault());
+
+// Pasted screenshots become attachments; pasted text behaves normally.
+document.addEventListener("paste", (e) => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (!files.length) return;
+  e.preventDefault();
+  addFiles(files.map((f, i) => f.type.startsWith("image/") && (!f.name || f.name === "image.png")
+    ? new File([f], `screenshot-${stamp()}${files.length > 1 ? "-" + (i + 1) : ""}.png`, { type: f.type })
+    : f));
+});
+
+els.changeInbox.addEventListener("click", async () => {
+  try { await pickInbox(); showStatus("ok", `Inbox folder set to <code>${esc(inboxHandle.name)}</code>.`); }
+  catch (e) { if (e.name !== "AbortError") showStatus("err", esc(e.message || e)); }
+});
+els.form.addEventListener("submit", onSubmit);
+// An error banner is stale as soon as the user starts fixing the form.
+els.form.addEventListener("input", () => { if (els.status.classList.contains("err")) showStatus("", ""); });
+loadInbox();
+</script>
+</body>
+</html>

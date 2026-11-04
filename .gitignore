@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+# local / generated
+watchdog/config.toml
+logs/
+*.log
+.e2e/
+desk/demo/data/

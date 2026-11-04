@@ -1,0 +1,84 @@
+# Copy to config.toml and adjust. Relative paths are resolved from this file's folder.
+
+[paths]
+inbox     = '\\fileserver\share\OrderAlerts\inbox'      # the folder users pick in the web form
+processed = '\\fileserver\share\OrderAlerts\processed'  # one sub-folder per ticket: report.html, CSVs, attachments
+failed    = '\\fileserver\share\OrderAlerts\failed'     # unreadable tickets + .error.txt
+log_file  = 'logs/order_watchdog.log'
+
+[watch]
+poll_seconds   = 5   # network shares do not deliver reliable change events, so we poll
+settle_seconds = 2   # ignore files modified more recently than this
+
+[data]
+default_region = "AP"  # used when the pasted data has no region column
+max_orders     = 20    # cap on orders queried per ticket
+date_formats   = ["%Y.%m.%d", "%Y-%m-%d", "%Y%m%d", "%d/%m/%Y", "%d-%m-%Y"]
+
+# Column headers recognised in the pasted data (case, spaces and punctuation are ignored).
+# Add the exact headers your trading platform uses.
+[data.columns]
+id_target = ["id_target", "target id", "targetid", "order id", "orderid"]
+id_server = ["id_server", "server id", "serverid", "server"]
+oes_oid   = ["oes_oid", "clordid", "client order id", "oes oid", "ext order id"]
+sym       = ["sym", "symbol", "ticker", "ric"]
+date      = ["date", "trade date", "tradedate"]
+region    = ["region"]
+
+[kdb]
+enabled = false   # set true once pykx is installed and the endpoints below are real
+timeout = 30
+
+# Today's orders go to the region's rdb, prior dates to its hdb.
+# Endpoints: .cfg.hsources[(region;"OMSR")] (RDB) / (region;"OMSH") (HDB) in the Argo q code.
+[[kdb.connections]]
+name = "AP-RDB"
+host = "ap-omsr-host"
+port = 5010
+region = "AP"
+kind = "rdb"
+# username = "svc_orderalert"
+# password_env = "ORDER_ALERT_KDB_PASSWORD"   # env var name, not the password
+
+[[kdb.connections]]
+name = "AP-HDB"
+host = "ap-omsh-host"
+port = 5000
+region = "AP"
+kind = "hdb"
+
+# Placeholders: {{date}} {{id_server}} {{id_target}} {{oes_oid}} {{sym}}
+# Only validated values are substituted (ints, q dates, safe symbols). A query whose placeholder
+# has no value for an order is skipped for that order.
+
+# Used when the pasted data lacks id_server (or only has oes_oid) to find the full order key.
+[kdb.resolve]
+by_id_target = "select date,id_server,id_target,sym from target where date={{date}}, id_target={{id_target}}"
+by_oes_oid   = "select date,id_server,id_target,sym from target where date={{date}}, oes_oid={{oes_oid}}"
+
+# Run for every order, in this order. Each result is saved as <name>.csv and shown in the report.
+# The names target / target_state / workorder / alerts feed the one-line order summary.
+[kdb.queries]
+target       = "select from target where date={{date}}, id_server={{id_server}}, id_target={{id_target}}"
+target_state = "select from target_state where date={{date}}, id_server={{id_server}}, id_target={{id_target}}"
+workorder    = "select from workorder where date={{date}}, id_server={{id_server}}, id_target={{id_target}}"
+execution    = "select from execution where date={{date}}, id_server={{id_server}}, id_target={{id_target}}"
+alerts       = "select from alerts where date={{date}}, id_server={{id_server}}, id_target={{id_target}}"
+
+[notify.email]
+enabled = false
+smtp_host = "smtp.example.local"
+smtp_port = 25
+starttls = false
+# username = ""
+# password_env = "ORDER_ALERT_SMTP_PASSWORD"
+from = "order-alert@example.com"
+to = ["quant-support@example.com"]
+subject_prefix = "[Order Alert]"
+max_attachment_mb = 10
+desk_url = "http://order-desk-host:8501"   # Order Alert Desk app; emails link straight to the issue
+
+# Used by the Order Alert Desk app (desk/), which reads this same file.
+[desk]
+team = ["Alice", "Bob", "Chen"]   # assignee suggestions; other names can still be typed
+history_days = 30                 # how far back the issue board looks
